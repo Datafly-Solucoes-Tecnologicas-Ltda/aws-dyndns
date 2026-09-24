@@ -40,21 +40,49 @@ Alternatively, you can create the credential file yourself. By default, its loca
 
 By default, `dns_update.py` will use the **ddns** credential profile. You can change this by issuing the `--profile PROFILE` option.
 
+The CNAME updater uses the public DNS name of an EC2 instance as the CNAME target. It uses the `ddns` profile for Route 53 and the `ec2` profile for the instance lookup by default. The EC2 profile requires `ec2:DescribeInstances` permission from [ddns_iam_policy.json](ddns_iam_policy.json). Use `--instance-profile` to select a different EC2 profile.
+
 # usage
-```
-usage: dns_update.py [-h] [--profile PROFILE] --domain DOMAIN
-                     [--record RECORD] [--zone ZONE] [--ttl TTL]
 
-Manage a dynamic home IP address with an AWS hosted route53 domain
+## A record
 
-optional arguments:
-  -h, --help            show this help message and exit
-  --profile PROFILE, -p PROFILE
-                        AWS credential profile
-  --domain DOMAIN, -d DOMAIN
-                        Domain to modify
-  --record RECORD, -r RECORD
-                        Record to modify
-  --zone ZONE, -z ZONE  AWS hosted zone id
-  --ttl TTL             Record TTL
+`dns_update.py` updates an A record with the current public IP address:
+
 ```
+/opt/aws-dyndns/dns_update.py --profile ddns --domain example.com \
+        --record home --zone ZONE_ID
+```
+
+Options:
+
+* `--profile`, `-p`: AWS credential profile for Route 53. Defaults to `ddns`.
+* `--domain`, `-d`: Domain to modify. Required.
+* `--record`, `-r`: Record name to modify. Optional.
+* `--zone`, `-z`: Route 53 hosted zone ID. If omitted, the domain is used to find it.
+* `--ttl`: Record TTL in seconds. Defaults to `300`.
+
+## CNAME record
+
+`dns_update_cname.py` updates a CNAME record to the public DNS name of an EC2 instance:
+
+```
+/opt/aws-dyndns/dns_update_cname.py \
+        --profile ddns \
+        --instance-profile ec2 \
+        --region eu-west-1 \
+        --domain example.com \
+        --record app \
+        --instance-id i-0123456789abcdef0 \
+        --zone ZONE_ID
+```
+
+Options:
+
+* `--profile`, `-p`: AWS credential profile used for Route 53. Defaults to `ddns`.
+* `--instance-profile`: AWS credential profile used to query EC2. Defaults to `ec2`.
+* `--region`: AWS region containing the EC2 instance. Optional when the instance profile already defines a region.
+* `--domain`, `-d`: Domain containing the CNAME record. Required.
+* `--record`, `-r`: CNAME record name to modify. Optional.
+* `--instance-id`: EC2 instance ID whose public DNS name becomes the CNAME target. Required.
+* `--zone`, `-z`: Route 53 hosted zone ID. If omitted, the domain is used to find it.
+* `--ttl`: CNAME record TTL in seconds. Defaults to `300`.
